@@ -1,0 +1,92 @@
+@startgantt roadmap
+title Роадмап трансформации данных «Будущее 2.0», октябрь 2026 — сентябрь 2027
+
+skinparam defaultFontName "DejaVu Sans"
+language ru
+printscale monthly zoom 3
+Project starts 2026-10-05
+
+-- Этап 0. Архитектурное решение и границы доменов (0–2 мес.) --
+[0.1 Архитектурное решение, ADR, техрадар — архитектура] as [a1] starts 2026-10-05 and lasts 42 days
+[0.2 Границы доменов, владельцы, карта контекстов, стандарт контрактов, реестр логики DWH — архитектура, лиды доменов] as [a2] starts 2026-10-05 and lasts 56 days
+[0.3 Классификация данных DWH и модель доступа — ИБ, governance] as [a3] starts 2026-10-12 and lasts 49 days
+[0.4 Компенсирующие меры для SQL Server 2008, проверка CDC и лицензий для Rehost — ИБ, клиники] as [a4] starts 2026-10-05 and lasts 28 days
+[0.5 Landing zone, канал ЦОД — облако, IaC-шаблон доменной среды — платформа] as [a5] starts 2026-10-19 and lasts 45 days
+[0.6 Проекты витрины в доменах, инвентаризация отчётов Power BI — лиды доменов, BI] as [a6] starts 2026-11-09 and lasts 25 days
+[Промежуточное состояние] happens 2026-12-04
+[a1] is colored in #aed6f1
+[a2] is colored in #aed6f1
+[a3] is colored in #f5b7b1
+[a4] is colored in #f5b7b1
+[a5] is colored in #d5d8dc
+[a6] is colored in #abebc6
+
+-- Этап 1. Платформа данных и пилот портала (2–6 мес.) --
+[1.1 Lakehouse: Object Storage, Iceberg, Nessie, Trino — платформа] as [b1] starts 2026-12-07 and lasts 56 days
+[1.2 Каталог DataHub, SSO, RLS в DataLens — платформа, ИБ] as [b2] starts 2026-12-07 and lasts 56 days
+[1.3 CDC: легаси-БД клиник по allow-list, учётные системы головного офиса — платформа, клиники] as [b3] starts 2027-01-04 and lasts 28 days
+[1.4 Пилот портала: «Операции клиник», первая версия «KPI группы» — клиники, BI] as [b4] starts 2027-02-01 and lasts 54 days
+[1.5 Защита ПДн в контуре платформы до загрузки данных — ИБ, платформа] as [b5] starts 2026-12-07 and lasts 28 days
+[Пилот портала принят] happens 2027-03-26
+[b1] -> [b4]
+[b2] -> [b4]
+[b3] -> [b4]
+[b5] -> [b3]
+[b1] is colored in #d5d8dc
+[b2] is colored in #d5d8dc
+[b3] is colored in #d5d8dc
+[b4] is colored in #abebc6
+[b5] is colored in #f5b7b1
+
+-- Этап 2. Независимость направлений и качество сервисов (3–9 мес.) --
+[2.1 Контур банка: перенос финтех-сервисов — банк, платформа] as [c1] starts 2027-01-11 and lasts 84 days
+[2.2 Перенос кредитов и финистории из DWH — банк, клиники] as [c2] starts 2027-04-05 and lasts 56 days
+[2.3 Событийная шина и события счетов и оплат — платформа, клиники, банк] as [c3] starts 2027-02-01 and lasts 70 days
+[2.4 Медконтур: Rehost БД клиник (подготовка и репетиции, переключение после 2.7), CDC, снимки в Object Storage — клиники, подрядчик, ИБ] as [c4] starts 2027-01-11 and lasts 98 days
+[2.5 MLOps и обезличенные датасеты — ИИ, клиники] as [c5] starts 2027-02-15 and lasts 98 days
+[2.6 Рассрочка на лечение — банк] as [c6] starts 2027-05-03 and lasts 56 days
+[2.7 Меры защиты и оценка соответствия контуров (152-ФЗ, ГОСТ Р 57580) до переноса данных — ИБ, внешний аудитор] as [c7] starts 2027-01-11 and lasts 84 days
+[2.8 Вывод бизнес-логики из БД клиник по реестру 0.2 — клиники, домены-получатели] as [c8] starts 2027-02-01 and lasts 147 days
+[c1] -> [c2]
+[c7] -> [c2]
+[c3] -> [c6]
+[Переключение БД клиник] happens at [c7]'s end
+[Кредиты в контуре банка] happens at [c2]'s end
+[c1] is colored in #fad7a0
+[c2] is colored in #fad7a0
+[c3] is colored in #d5d8dc
+[c4] is colored in #f5b7b1
+[c5] is colored in #f5b7b1
+[c6] is colored in #fad7a0
+[c7] is colored in #f5b7b1
+[c8] is colored in #aed6f1
+
+-- Этап 3. Портал для всех доменов и новые бизнесы (6–12 мес.) --
+[3.1 Data products всех доменов и «KPI группы»; «Финтех» — после 2.2 — домены, финансы] as [d1] starts 2027-04-05 and lasts 112 days
+[3.2 Перенос отчётов Power BI и его вывод — BI, домены] as [d2] starts 2027-05-03 and lasts 126 days
+[3.3 Домен «Партнёры»: шаблон, шлюз, первый фармпартнёр — партнёры] as [d3] starts 2027-05-03 and lasts 84 days
+[3.4 Подключение производителя медоборудования — партнёры] as [d4] starts 2027-07-26 and lasts 56 days
+[3.5 Профиль клиента и согласия (Could) — клиенты] as [d5] starts 2027-06-07 and lasts 84 days
+[3.6 Три зоны доступности, DR, мониторинг и SLO, учения — платформа, ИБ] as [d6] starts 2027-06-07 and lasts 98 days
+[3.7 Перевод внутренних сервисов с ESB на события — головной офис] as [d7] starts 2027-07-05 and lasts 84 days
+[Финальное состояние] happens 2027-10-01
+[d3] -> [d4]
+[d1] is colored in #abebc6
+[d2] is colored in #abebc6
+[d3] is colored in #d7bde2
+[d4] is colored in #d7bde2
+[d5] is colored in #eeeeee
+[d6] is colored in #f5b7b1
+[d7] is colored in #d5d8dc
+
+legend bottom left
+  <b>Цвет — направление</b>
+  <back:#aed6f1>    </back> архитектура и governance
+  <back:#d5d8dc>    </back> платформа данных и интеграций
+  <back:#abebc6>    </back> портал самообслуживания и отчётность
+  <back:#fad7a0>    </back> финтех
+  <back:#f5b7b1>    </back> медицинский контур, ИИ, ИБ и надёжность
+  <back:#d7bde2>    </back> новые бизнесы
+  <back:#eeeeee>    </back> необязательная работа (Could have)
+endlegend
+@endgantt

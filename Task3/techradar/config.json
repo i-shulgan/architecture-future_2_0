@@ -1,0 +1,124 @@
+{
+  "basePath": "/",
+  "baseUrl": "",
+  "editUrl": "",
+  "logoFile": "logo.svg",
+  "jsFile": "",
+  "toggles": {
+    "showSearch": true,
+    "showChart": true,
+    "showTagFilter": true,
+    "showQuadrantList": true,
+    "showEmptyRings": false
+  },
+  "sections": ["radar", "tags", "list"],
+  "colors": {
+    "foreground": "#fcf2e6",
+    "background": "#1b2a3a",
+    "highlight": "#d4a373",
+    "content": "#fff",
+    "text": "#575757",
+    "link": "#bc6c25",
+    "border": "rgba(255, 255, 255, 0.1)",
+    "tag": "rgba(255, 255, 255, 0.1)"
+  },
+  "quadrants": [
+    {
+      "id": "languages-and-frameworks",
+      "title": "Языки и фреймворки",
+      "description": "Языки разработки сервисов и фреймворки обработки данных",
+      "color": "#7fb3d5"
+    },
+    {
+      "id": "methods-and-patterns",
+      "title": "Архитектура и практики",
+      "description": "Архитектурные подходы к данным и интеграциям, практики разработки и управления данными",
+      "color": "#76d7c4"
+    },
+    {
+      "id": "platforms-and-operations",
+      "title": "Платформы и инфраструктура",
+      "description": "Облако, управляемые сервисы, СУБД и среды выполнения",
+      "color": "#f7dc6f"
+    },
+    {
+      "id": "tools",
+      "title": "Инструменты данных и интеграции",
+      "description": "Хранение, каталогизация, обработка, интеграция и визуализация данных",
+      "color": "#f0b27a"
+    }
+  ],
+  "rings": [
+    {
+      "id": "adopt",
+      "title": "Adopt",
+      "description": "Стандарт для продуктива и новых проектов",
+      "color": "#27ae60",
+      "radius": 0.5,
+      "strokeWidth": 5
+    },
+    {
+      "id": "trial",
+      "title": "Trial",
+      "description": "Пилотируем на реальных задачах доменов перед широким внедрением",
+      "color": "#2e86c1",
+      "radius": 0.69,
+      "strokeWidth": 3
+    },
+    {
+      "id": "assess",
+      "title": "Assess",
+      "description": "Изучаем и прототипируем, решение о внедрении не принято",
+      "color": "#ca6f1e",
+      "radius": 0.85,
+      "strokeWidth": 2
+    },
+    {
+      "id": "hold",
+      "title": "Hold",
+      "description": "Не используем в новых проектах, выводим из эксплуатации",
+      "color": "#c0392b",
+      "radius": 1,
+      "strokeWidth": 0.75
+    }
+  ],
+  "flags": {
+    "new": {
+      "color": "#f1235a",
+      "title": "Новое",
+      "titleShort": "N",
+      "description": "Новое в этой версии"
+    },
+    "changed": {
+      "color": "#40a7d1",
+      "title": "Изменено",
+      "titleShort": "C",
+      "description": "Кольцо изменилось в этой версии"
+    },
+    "default": {
+      "description": "Без изменений"
+    }
+  },
+  "chart": {
+    "size": 800,
+    "blipSize": 12
+  },
+  "social": [],
+  "imprint": "",
+  "labels": {
+    "title": "Технический радар «Будущее 2.0»",
+    "imprint": "",
+    "quadrant": "Квадрант",
+    "quadrantOverview": "Все технологии квадранта",
+    "zoomIn": "Подробнее",
+    "filterByTag": "Фильтр по бизнес-сценарию",
+    "footer": "Технический радар «Будущее 2.0». Пересматривается не реже раза в полгода",
+    "notUpdated": "Давно не пересматривалось",
+    "notFound": "Не найдено",
+    "pageAbout": "Как читать радар",
+    "pageOverview": "Все технологии",
+    "pageSearch": "Поиск",
+    "searchPlaceholder": "Что ищем?",
+    "metaDescription": "Технический радар «Будущее 2.0»"
+  }
+}

@@ -1,0 +1,143 @@
+@startuml diagram
+title Диаграмма автоматизации развёртывания доменной среды «Будущее 2.0» в Yandex Cloud
+
+skinparam defaultFontName "DejaVu Sans"
+skinparam shadowing false
+skinparam componentStyle rectangle
+skinparam ArrowColor #555555
+skinparam ArrowFontSize 11
+skinparam rectangle {
+  RoundCorner 8
+}
+skinparam rectangle<<tf>> {
+  BackgroundColor #d5f5e3
+  BorderColor #1e8449
+}
+skinparam database<<tf>> {
+  BackgroundColor #d5f5e3
+  BorderColor #1e8449
+}
+skinparam rectangle<<manual>> {
+  BackgroundColor #fdebd0
+  BorderColor #ca6f1e
+}
+skinparam file<<manual>> {
+  BackgroundColor #fdebd0
+  BorderColor #ca6f1e
+}
+skinparam rectangle<<data>> {
+  BackgroundColor #d6eaf8
+  BorderColor #2874a6
+}
+skinparam rectangle<<cloudinit>> {
+  BackgroundColor #fcf3cf
+  BorderColor #b7950b
+}
+hide stereotype
+left to right direction
+skinparam nodesep 25
+skinparam ranksep 60
+
+actor "Администратор" as admin
+
+rectangle "Рабочее место администратора" as ws {
+  rectangle "Terraform CLI\ninit → plan → apply" as tf
+  file "Конфигурация в Git\nmain.tf, variables.tf,\noutputs.tf, terraform.tfvars,\ncloud-init.yaml.tftpl" as code
+  file "terraform.tfstate\n(локально, вне Git)" as state
+  file "SSH-ключ администратора" as ssh <<manual>>
+  file "admin.auto.tfvars:\nадрес администратора\n(вне Git)" as adminVars <<manual>>
+  file "YC_TOKEN / ключ сервисного\nаккаунта, YC_CLOUD_ID,\nYC_FOLDER_ID (env)" as creds <<manual>>
+}
+
+rectangle "Подготовка вручную (один раз)" as prep {
+  rectangle "Организация и платёжный аккаунт" as billing <<manual>>
+  rectangle "Облако и каталог" as folder <<manual>>
+  rectangle "Учётная запись или сервисный\nаккаунт terraform-sa, роли editor,\nstorage.admin, kms.keys.encrypterDecrypter" as iam <<manual>>
+}
+
+rectangle "Yandex Cloud" as yc {
+
+  rectangle "Каталог: ресурсы доменной среды" as res {
+    rectangle "Образ ubuntu-2204-lts\n(data source)" as img <<data>>
+    rectangle "Параметры клиента: облако, каталог\n(data source)" as clientcfg <<data>>
+
+    rectangle "VPC future20-dev-net" as net <<tf>>
+    rectangle "NAT-шлюз\n(shared egress)" as nat <<tf>>
+    rectangle "Таблица маршрутов\n0.0.0.0/0 → NAT" as rt <<tf>>
+
+    rectangle "Подсеть public\n10.10.0.0/24" as snPub <<tf>>
+    rectangle "Подсеть platform\n10.10.10.0/24, приватная" as snPlat <<tf>>
+    rectangle "Подсеть clinic\n10.10.20.0/24, приватная\n(медицинский контур)" as snClin <<tf>>
+
+    rectangle "Группа безопасности bastion:\nSSH из admin_cidrs" as sgB <<tf>>
+    rectangle "Группа безопасности platform:\nSSH с bastion 10.10.0.10/32,\nNessie API из платформы и с bastion" as sgP <<tf>>
+    rectangle "Группа безопасности clinic:\nSSH с bastion 10.10.0.10/32, без связи\nс платформой; исходящий —\nконтур, HTTP/HTTPS, NTP" as sgC <<tf>>
+
+    rectangle "ВМ bastion\n2 vCPU 20 %, 1 ГБ\nHDD 10 ГБ, публичный IP,\nвнутренний 10.10.0.10" as vmB <<tf>>
+    rectangle "ВМ nessie\n2 vCPU 50 %, 4 ГБ\nHDD 20 ГБ" as vmN <<tf>>
+    rectangle "ВМ clinic-adapter\n2 vCPU 20 %, 2 ГБ\nHDD 15 ГБ" as vmA <<tf>>
+    rectangle "Диск данных nessie\nSSD 20 ГБ (RocksDB)" as dN <<tf>>
+    rectangle "Диск данных clinic-adapter\nHDD 10 ГБ" as dA <<tf>>
+
+    rectangle "Ключ KMS\nAES-256, ротация раз в год" as kms <<tf>>
+    database "Бакет Object Storage\nfuture20-dev-lakehouse-…\nSSE-KMS" as bucket <<tf>>
+
+    rectangle "cloud-init: пользователь и SSH-ключ,\nразметка и монтирование /data,\nDocker + Nessie 0.108.8 (RocksDB на /data)" as ciN <<cloudinit>>
+    rectangle "cloud-init: пользователь и SSH-ключ,\n/data, OpenJDK для адаптера" as ciA <<cloudinit>>
+    rectangle "cloud-init: пользователь и SSH-ключ" as ciB <<cloudinit>>
+  }
+}
+
+rectangle "Вручную после развёртывания" as post {
+  rectangle "Выкладка кода адаптера событий клиник" as deployApp <<manual>>
+  rectangle "terraform destroy после проверки\nтестовой среды" as destroy <<manual>>
+}
+
+admin --> code : правит и ревьюит
+admin --> tf : запускает
+admin ..> prep : выполняет
+admin ..> creds : выпускает токен или ключ
+code --> tf : желаемое состояние
+tf <--> state : фактическое состояние
+creds --> tf : аутентификация
+ssh --> tf : публичный ключ в cloud-init
+adminVars --> tf : admin_cidrs
+iam ..> creds : права для токена
+folder ..> res : каталог для ресурсов
+
+tf --> img : читает
+tf --> clientcfg : читает
+tf ==> res : создаёт, изменяет и удаляет\nвсе зелёные ресурсы (16 шт.)
+
+net --> snPub
+net --> snPlat
+net --> snClin
+nat --> rt
+rt --> snPlat : привязана
+rt --> snClin : привязана
+img --> vmB : загрузочный диск
+img --> vmN
+img --> vmA
+clientcfg --> bucket : folder_id в имени
+kms --> bucket : шифрование
+snPub --> vmB
+snPlat --> vmN
+snClin --> vmA
+sgB --> vmB
+sgP --> vmN
+sgC --> vmA
+dN --> vmN : secondary_disk
+dA --> vmA : secondary_disk
+vmN --> ciN : user-data
+vmA --> ciA : user-data
+vmB --> ciB : user-data
+vmA ..> deployApp
+
+legend bottom right
+  <b>Кто управляет компонентом</b>
+  <color:#1e8449>■■</color> Terraform создаёт, изменяет и удаляет
+  <color:#2874a6>■■</color> Terraform только читает (data source)
+  <color:#b7950b>■■</color> настраивается автоматически через cloud-init, который передаёт Terraform
+  <color:#ca6f1e>■■</color> создаётся или выполняется вручную
+endlegend
+@enduml

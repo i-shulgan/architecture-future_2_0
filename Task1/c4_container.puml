@@ -1,0 +1,167 @@
+@startuml c4_container
+!include <C4/C4_Container>
+skinparam defaultFontName "DejaVu Sans"
+
+title Целевая архитектура «Будущее 2.0» через год — диаграмма контейнеров (C4, уровень 2)
+
+AddElementTag("legacy", $bgColor="#7f7f7f", $fontColor="#ffffff", $borderColor="#5c5c5c", $legendText="легаси, сохраняется на переходный период")
+AddElementTag("legacy_med", $bgColor="#7f7f7f", $fontColor="#ffffff", $borderColor="#b03a2e", $borderThickness="4", $legendText="легаси с медданными (не попадают в витрину)")
+AddElementTag("medical", $bgColor="#b03a2e", $borderColor="#7b241c", $legendText="медданные: медкарты, истории болезни, исследования — НЕ попадают в витрину")
+AddElementTag("bank", $bgColor="#b9770e", $borderColor="#7e5109", $legendText="банковская тайна: только внутри контура банка")
+AddElementTag("product", $bgColor="#1e8449", $borderColor="#145a32", $legendText="доменный data product (публикуется в витрину)")
+AddRelTag("legacy", $lineStyle=DashedLine(), $textColor="#5c5c5c", $lineColor="#8c8c8c", $legendText="легаси-интеграция, выводится")
+AddRelTag("restricted", $textColor="#b03a2e", $lineColor="#b03a2e", $legendText="поток медданных внутри медицинского контура")
+AddRelTag("publish", $textColor="#1e8449", $lineColor="#1e8449", $legendText="публикация data product в Lakehouse")
+AddBoundaryTag("isolated", $bgColor="#ffffff", $borderColor="#b03a2e", $fontColor="#b03a2e", $legendText="изолированная среда (отдельное облако Yandex Cloud)")
+AddBoundaryTag("could", $bgColor="#ffffff", $borderColor="#7d3c98", $fontColor="#7d3c98", $legendText="Could have: запускается при наличии ресурсов")
+
+Person(operator, "Оператор / врач клиники", "Ведёт приём, оформляет услуги, загружает снимки")
+Person(client, "Клиент", "Пациент клиники и клиент банка")
+Person(analyst, "Бизнес-пользователь", "Руководитель или аналитик головного офиса и доменов")
+Person(dataeng, "Доменная data-команда", "Владеет data products своего домена")
+
+System_Ext(pharma, "Фармацевтические компании", "Каталоги препаратов, поставки, цены")
+System_Ext(devices, "Производитель медоборудования", "Телеметрия и сервисные данные оборудования")
+System_Ext(cbr, "Банк России", "Надзор за банком, обязательная отчётность")
+
+Boundary(ai, "Домен «ИИ-диагностика» — медицинский контур, облако ИИ", $tags="isolated") {
+  Container(mlops, "MLOps-платформа", "DataSphere, MLflow", "Обучение, версионирование и выкатка моделей")
+  Container(aiSvc, "ИИ-сервисы диагностики", "Python, Managed Kubernetes (GPU)", "Анализ снимков и исследований, подсказки врачу")
+  ContainerDb(aiData, "Обучающие датасеты", "Object Storage", "Только обезличенные данные", $tags="medical")
+}
+
+Boundary(clinicDomain, "Домен «Клиники»") {
+Boundary(clinic, "Медицинский контур — облако клиник (152-ФЗ, врачебная тайна)", $tags="isolated") {
+  Container(arm, "АРМ оператора клиники", "PowerBuilder", "Запись, приём, оформление услуг. Доработан: снимки в Object Storage, вызов ИИ-API", $tags="legacy")
+  Container(anon, "Сервис обезличивания", "Python", "Готовит обезличенные датасеты по контракту с ИИ-доменом", $tags="medical")
+  ContainerDb(pacs, "Хранилище медснимков", "Object Storage, шифрование KMS", "Снимки и файлы исследований вместо BLOB в DWH", $tags="medical")
+  ContainerDb(medDb, "Операционная БД клиник", "MS SQL Server 2008 (Rehost на ВМ)", "Медкарты, истории болезни, исследования; до вывода — немедицинские таблицы клиник. Аналитика и логика финтеха/ИИ вынесены", $tags="legacy_med")
+  Container(clinicAdapter, "Адаптер событий клиник", "Java, Debezium", "Счета и оплаты; ФЛК, потоковые преобразования, маршрутизация, inbox/outbox, retry/DLQ")
+}
+  Container(dpClinic, "Data product «Операции клиник»", "Spark, Airflow DAG на платформе данных", "Визиты, услуги, загрузка врачей, выручка клиник — без медданных; пайплайн вне медконтура", $tags="product")
+}
+
+Boundary(bank, "Домен «Финтех» — контур банка (банковская тайна, требования ЦБ)", $tags="isolated") {
+  Container(finSvc, "Финтех-сервисы", "Go, Java, Managed Kubernetes", "Счета, кредиты, платежи; бизнес-правила и компенсации, ФЛК, inbox/outbox, retry/DLQ", $tags="bank")
+  ContainerDb(finDb, "Банковские БД", "Managed PostgreSQL, кластер в 3 зонах", "Счета, кредиты, финансовая история клиентов", $tags="bank")
+  Container(regRep, "Регуляторная отчётность", "Java", "Формы обязательной отчётности для Банка России", $tags="bank")
+  Container(dpFin, "Data product «Финтех»", "Spark, Airflow DAG", "Агрегаты портфеля, платежей и выручки; псевдонимизация", $tags="product")
+}
+
+Boundary(customer, "Домен «Клиенты» (Could have)", $tags="could") {
+  Container(custSvc, "Профиль клиента и согласия", "Go, Managed PostgreSQL", "Единый ID клиента, согласия на обработку ПДн")
+  Container(dpCust, "Data product «Клиенты»", "Spark, Airflow DAG", "Псевдонимизированный ID, сегменты, статус согласий", $tags="product")
+}
+
+Boundary(integ, "Интеграционная платформа") {
+  Container(cdc, "CDC-репликация", "Yandex Data Transfer", "Снапшот и журнал изменений легаси-БД")
+  ContainerQueue(kafka, "Событийная шина", "Managed Service for Apache Kafka, Schema Registry", "Хранение и доставка событий; версии схем. ФЛК и обработка — в доменах")
+  Container(esb, "ESB", "Apache Camel", "Остаточные внутренние маршруты: ФЛК, трансформации, маршрутизация, надёжность и логика до переноса", $tags="legacy")
+}
+
+Boundary(partner, "Домен «Партнёры» — подключается по шаблону доменной среды") {
+  Container(partnerGw, "Партнёрский шлюз", "Yandex API Gateway", "HTTPS-вход, аутентификация и маршрутизация в обработчик")
+  Container(partnerAdapter, "Обработчик партнёрских интеграций", "Java, Managed Kubernetes", "ФЛК, batch/stream-преобразования, маршрутизация, корреляция, inbox/outbox, retry/DLQ")
+  Container(dpPartner, "Data products «Фарма», «Оборудование»", "Spark, Airflow DAG", "Поставки, остатки, состояние оборудования", $tags="product")
+}
+
+Boundary(corp, "Домен «Головной офис»") {
+  Container(intSvc, "Внутренние сервисы", "ERP, HRM, складской учёт", "Финучёт, HR, склад; бизнес-правила и адаптеры: ФЛК, batch/stream, retry/DLQ")
+  Container(dpCorp, "Data product «KPI группы»", "Spark, Airflow DAG", "Сводные показатели из data products доменов", $tags="product")
+}
+
+Boundary(platform, "Self-serve платформа данных (платформенная команда) — только немедицинские данные") {
+  ContainerDb(lake, "Lakehouse", "Object Storage + Apache Iceberg", "Raw- и curated-зоны по доменам")
+  Container(airflow, "Оркестрация", "Managed Airflow, Data Processing (Spark)", "Airflow: расписания и повторы; Spark: пакетные трансформации доменных data products")
+  Container(nessie, "Каталог таблиц", "Nessie", "Версии таблиц, ветки загрузки")
+  Container(trino, "SQL-движок", "Yandex Managed Service for Trino", "Запросы к Iceberg-таблицам, правила доступа к каталогам и схемам доменов")
+  Container(portal, "Портал самообслуживания «Витрина данных»", "Yandex DataLens", "Дашборды KPI, датасеты с едиными метриками, конструктор отчётов, RLS по пользователю")
+  Container(datahub, "Каталог данных", "DataHub", "Data products, владельцы, глоссарий, lineage, классификация ПДн")
+  Container(iam, "Управление доступом", "Yandex Identity Hub (SSO)", "Роли и уровни доступа сотрудников")
+}
+
+' --- Клиники и ИИ
+Rel_D(operator, arm, "Ведёт приём, загружает снимки")
+Rel_D(arm, medDb, "Медкарты, истории болезни", "ODBC", $tags="restricted")
+Rel_R(arm, pacs, "Сохраняет снимки [С6]", "S3 API", $tags="restricted")
+Rel_R(arm, aiSvc, "Запрос анализа со ссылкой на снимок, подсказка врачу [С4][С6]", "HTTPS/REST, приватная связь", $tags="restricted")
+Rel_D(aiSvc, pacs, "Снимок по ссылке из запроса", "S3 pre-signed URL", $tags="restricted")
+Rel_D(anon, medDb, "Читает исследования", "JDBC", $tags="restricted")
+Rel_D(anon, pacs, "Читает снимки", "S3 API", $tags="restricted")
+Rel_D(anon, aiData, "Обезличенные датасеты по контракту [С4]", "S3 API", $tags="restricted")
+Rel_D(mlops, aiData, "Обучает модели", "S3 API")
+Rel_D(mlops, aiSvc, "Выкатывает версии моделей [С4]", "MLflow Model Registry, Kubernetes API")
+
+' --- Финтех и клиенты
+Rel_D(client, finSvc, "Оплата лечения, рассрочка, кредиты [С3]", "HTTPS")
+Rel_D(finSvc, finDb, "Операции", "SQL")
+Rel_R(finSvc, custSvc, "Проверка клиента и согласий [С3][С6]", "gRPC")
+Rel_D(finSvc, kafka, "События: оплата, выдача кредита [С3]", "Kafka, TLS")
+Rel_U(dpFin, finDb, "Читает операции", "SQL, read-replica")
+Rel_U(regRep, finDb, "Читает операции", "SQL, read-replica")
+Rel_D(regRep, cbr, "Обязательная отчётность [С6]", "каналы Банка России")
+Rel_D(custSvc, kafka, "События профиля и согласий", "Kafka, TLS")
+
+' --- Интеграции
+Rel_U(cdc, medDb, "Только немедицинские таблицы по allow-list", "CDC, read-only endpoint")
+Rel_U(cdc, finDb, "Разовый перенос кредитов [С3]", "Data Transfer")
+Rel_D(cdc, intSvc, "Читает БД учёта; разовый перенос персонала и склада", "CDC, Data Transfer")
+Rel_D(cdc, lake, "Raw-зоны доменов", "S3 API")
+Rel_U(clinicAdapter, medDb, "CDC по таблице счетов; запись статуса оплаты", "Debezium, JDBC")
+Rel_D(clinicAdapter, kafka, "Счета и оплаты [С3]; ID клиента; данные партнёров [С5]", "Kafka, TLS")
+Rel_U(intSvc, kafka, "События оплат и партнёров; заказы препаратов и заявки на обслуживание [С5]", "Kafka, TLS")
+Rel_U(esb, intSvc, "Остаточные маршруты со всеми правилами [С6]", "Camel", $tags="legacy")
+BiRel_D(pharma, partnerGw, "Каталоги, поставки; обратно — заказы препаратов [С5]", "HTTPS")
+BiRel_D(devices, partnerGw, "Телеметрия; обратно — заявки на обслуживание [С5]", "HTTPS")
+Rel_D(partnerGw, partnerAdapter, "Запросы партнёров и ответы [С5]", "HTTPS")
+Rel_U(partnerAdapter, partnerGw, "Исходящие заказы и заявки [С5]", "HTTPS")
+BiRel_U(partnerAdapter, kafka, "Проверенные события; заказы и заявки [С5][С6]", "Kafka, TLS")
+Rel_U(dpPartner, kafka, "Читает события партнёров", "Kafka, TLS")
+
+' --- Публикация data products
+Rel_D(dpClinic, lake, "Читает raw-зону клиник, публикует «Операции клиник» [С1]", "Iceberg", $tags="publish")
+Rel_D(dpFin, lake, "Публикует «Финтех» [С1][С3]", "Iceberg", $tags="publish")
+Rel_D(dpCust, lake, "Публикует «Клиенты» [С1][С2]", "Iceberg", $tags="publish")
+Rel_D(dpPartner, lake, "Публикует «Фарма», «Оборудование» [С5]", "Iceberg", $tags="publish")
+Rel_D(dpCorp, lake, "Читает продукты доменов, публикует «KPI группы» [С1]", "Iceberg", $tags="publish")
+Rel_U(airflow, lake, "Запускает загрузки и трансформации", "Spark, S3 API")
+Rel_U(dataeng, airflow, "Разворачивает пайплайны своего домена [С3][С5]", "Git, CI/CD")
+Rel_U(dataeng, datahub, "Регистрирует data product, контракт, владельца [С5]", "HTTPS")
+
+' --- Витрина данных
+Rel_U(analyst, portal, "Отчёты по срезам и свои отчёты в пределах уровня доступа [С1][С2]", "HTTPS")
+Rel_U(analyst, datahub, "Ищет данные и определения метрик [С2]", "HTTPS")
+Rel_U(portal, trino, "SQL-запросы датасетов [С1][С2]", "коннектор Trino, HTTPS")
+Rel_U(trino, lake, "Читает Iceberg-таблицы", "S3 API")
+Rel_L(trino, nessie, "Метаданные таблиц", "Nessie REST API")
+Rel_R(portal, iam, "SSO, группы пользователей для RLS [С2][С6]", "SAML/OIDC")
+Rel_L(datahub, trino, "Метаданные и lineage", "ingestion: Trino, Iceberg")
+
+note as scenarios
+  <b>Ключевые бизнес-сценарии</b>
+  [С1] Быстрая отчётность и целостная картина по KPI группы
+  [С2] Самообслуживание: отчёты по любым срезам в пределах уровня доступа
+  [С3] Независимое развитие финтеха
+  [С4] Независимое развитие ИИ-направления
+  [С5] Подключение новых бизнесов (фарма, медоборудование)
+  [С6] Качество и надёжность медицинских и финансовых сервисов, регуляторика
+end note
+
+Lay_R(operator, scenarios)
+Lay_R(scenarios, client)
+Lay_D(arm, anon)
+Lay_R(dpClinic, medDb)
+Lay_D(aiSvc, aiData)
+Lay_R(anon, clinicAdapter)
+Lay_R(clinicAdapter, finSvc)
+Lay_R(finSvc, dpFin)
+Lay_D(medDb, cdc)
+Lay_R(cdc, kafka)
+Lay_R(kafka, esb)
+Lay_D(kafka, partnerGw)
+Lay_R(dpPartner, intSvc)
+Lay_D(partnerGw, lake)
+
+SHOW_FLOATING_LEGEND()
+Lay_D(iam, LEGEND())
+@enduml

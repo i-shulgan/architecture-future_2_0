@@ -1,0 +1,46 @@
+#cloud-config
+users:
+  - name: ${user}
+    groups: sudo
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    ssh_authorized_keys:
+      - ${ssh_public_key}
+
+package_update: true
+%{ if role == "nessie" ~}
+packages:
+  - docker.io
+%{ endif ~}
+%{ if role == "clinic-adapter" ~}
+packages:
+  - openjdk-17-jre-headless
+%{ endif ~}
+%{ if has_data_disk ~}
+
+fs_setup:
+  - label: data
+    filesystem: ext4
+    device: /dev/disk/by-id/virtio-data
+    overwrite: false
+
+mounts:
+  - ["/dev/disk/by-id/virtio-data", "/data", "ext4", "defaults,nofail", "0", "2"]
+%{ endif ~}
+
+runcmd:
+%{ if role == "nessie" ~}
+  - mkdir -p /data/nessie && chown 185:185 /data/nessie
+  - systemctl enable --now docker
+  - >-
+    docker run -d --restart unless-stopped --name nessie
+    -p ${nessie_port}:19120
+    -v /data/nessie:/nessie/data
+    -e NESSIE_VERSION_STORE_TYPE=ROCKSDB
+    -e NESSIE_VERSION_STORE_PERSIST_ROCKS_DATABASE_PATH=/nessie/data
+    ${nessie_image}
+%{ endif ~}
+%{ if role == "clinic-adapter" ~}
+  - mkdir -p /data/outbox /opt/clinic-adapter
+%{ endif ~}
+  - echo "role=${role}" > /etc/future20-role

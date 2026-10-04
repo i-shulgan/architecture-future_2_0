@@ -1,0 +1,43 @@
+@startuml dfd_level0
+title DFD уровня 0 — контекстная диаграмма экосистемы «Будущее 2.0»
+
+skinparam defaultFontName "DejaVu Sans"
+skinparam shadowing false
+skinparam ArrowColor #444444
+skinparam ArrowFontSize 11
+skinparam rectangle<<external>> {
+  BackgroundColor #d5d8dc
+  BorderColor #566573
+  FontStyle bold
+}
+skinparam usecase {
+  BackgroundColor #d6eaf8
+  BorderColor #2874a6
+  FontStyle bold
+}
+hide stereotype
+left to right direction
+
+rectangle "Пациент / клиент" as patient <<external>>
+rectangle "Оператор / врач\nклиники" as operator <<external>>
+rectangle "Фармацевтические\nкомпании" as pharma <<external>>
+rectangle "Производитель\nмедоборудования" as devices <<external>>
+
+usecase "0\nЭкосистема данных\n«Будущее 2.0»" as eco
+
+rectangle "Бизнес-пользователь\n(головной офис, домены)" as analyst <<external>>
+rectangle "Банк России" as cbr <<external>>
+
+patient --> eco : персональные данные, согласия,\nзапись на приём, заявки на рассрочку\nи кредит, платежи
+eco --> patient : заключения, счета, решения\nпо кредиту, выписки
+operator --> eco : данные приёма, медкарты,\nрезультаты исследований, снимки
+eco --> operator : история пациента,\nподсказки ИИ, расписание
+pharma --> eco : каталоги препаратов,\nцены, поставки
+eco --> pharma : заказы препаратов
+devices --> eco : телеметрия и сервисные\nсобытия оборудования
+eco --> devices : заявки на обслуживание
+analyst --> eco : запросы отчётов, срезы
+eco --> analyst : отчёты и дашборды KPI\n(без медицинских данных)
+eco --> cbr : обязательная отчётность банка
+
+@enduml

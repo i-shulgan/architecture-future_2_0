@@ -1,0 +1,122 @@
+@startuml dfd_analytical
+title DFD уровня 1 — аналитические потоки: data products доменов и портал самообслуживания
+
+skinparam defaultFontName "DejaVu Sans"
+skinparam shadowing false
+skinparam ArrowColor #7b7d7d
+skinparam ArrowFontSize 10
+skinparam rectangle<<external>> {
+  BackgroundColor #d5d8dc
+  BorderColor #566573
+  FontStyle bold
+}
+skinparam usecase {
+  BackgroundColor #d6eaf8
+  BorderColor #2874a6
+  FontStyle bold
+}
+skinparam database {
+  BackgroundColor #fef9e7
+  BorderColor #9a7d0a
+}
+skinparam database<<medical>> {
+  BackgroundColor #f5b7b1
+  BorderColor #b03a2e
+}
+skinparam database<<bank>> {
+  BackgroundColor #fae5d3
+  BorderColor #b9770e
+}
+skinparam database<<product>> {
+  BackgroundColor #d5f5e3
+  BorderColor #1e8449
+}
+skinparam note {
+  BackgroundColor #fdedec
+  BorderColor #b03a2e
+}
+hide stereotype
+
+rectangle "Домен «Клиники»" as dClinic #f4f6f7;line:566573;line.dashed {
+  rectangle "Медицинский контур" as medContour #fdf2f2;line:b03a2e;line.dashed {
+    database "D1 Медкарты, истории\nболезни, результаты\nисследований" as d1 <<medical>>
+    database "D2 Медснимки" as d2 <<medical>>
+    database "D3 Пациенты, услуги\nи счета" as d3
+  }
+  usecase "1.3\nПубликация\n«Операции клиник»\n(на платформе данных)" as p13
+}
+note bottom of d2
+  Из D1 и D2 потоков в аналитический
+  контур нет: медкарты, истории болезни,
+  результаты исследований и снимки
+  в data products и портал не попадают
+end note
+
+rectangle "Домен «Финтех» — контур банка" as dFin #fef5e7;line:b9770e;line.dashed {
+  database "D6 Счета, кредиты,\nплатежи" as d6 <<bank>>
+  usecase "3.4\nПубликация\n«Финтех»" as p34
+}
+
+rectangle "Домен «Клиенты»" as dCust #f4f6f7;line:566573;line.dashed {
+  database "D7 Профили клиентов\nи согласия" as d7
+  usecase "4.2\nПубликация\n«Клиенты»" as p42
+}
+
+rectangle "Домен «Партнёры»: «Фарма», «Медоборудование»" as dPart #f5eef8;line:7d3c98;line.dashed {
+  usecase "5.2\nПубликация\n«Фарма», «Оборудование»" as p52
+}
+
+rectangle "Интеграционная платформа" as dInt #f4f6f7;line:566573;line.dashed {
+  database "D9 Журнал доменных\nсобытий" as d9
+}
+
+rectangle "Домен «Головной офис»" as dCorp #f4f6f7;line:566573;line.dashed {
+  database "D8 Учётные данные" as d8
+  usecase "6.2\nРасчёт\n«KPI группы»" as p62
+}
+
+rectangle "Self-serve платформа данных — только немедицинские данные" as dPlat #eafaf1;line:1e8449;line.dashed {
+  database "D10 Lakehouse:\ndata products доменов" as d10 <<product>>
+  usecase "7.1\nКаталогизация\nи классификация" as p71
+  database "D11 Каталог data products\nи политики доступа" as d11
+  usecase "7.3\nСинхронизация\nролей" as p73
+  database "D12 Роли и уровни\nдоступа сотрудников" as d12
+  usecase "7.2\nФормирование отчётов\nи дашбордов (портал)" as p72
+}
+
+rectangle "Бизнес-пользователь\n(головной офис, домены)" as analyst <<external>>
+
+d3 -[#1e8449,bold]-> p13 : 48 [Г]: пациенты (псевдонимизированный ID,\nбез медданных), услуги, счета —\nCDC по allow-list
+p13 -[#1e8449,bold]-> d10 : 49 [Г]: «Операции клиник»: визиты,\nуслуги, загрузка врачей, выручка
+d6 -[#1e8449,bold]-> p34 : 50 [Г]: операции\n(read-replica)
+p34 -[#1e8449,bold]-> d10 : 51 [Г]: «Финтех»: агрегаты портфеля\nи платежей, псевдонимизированный ID
+d7 --> p42 : 52: профили, согласия
+p42 --> d10 : 53: «Клиенты»: псевдонимизированный\nID, сегменты, статус согласий
+d9 -[#7d3c98,bold]-> p52 : 54 [В]: события партнёров
+p52 -[#7d3c98,bold]-> d10 : 55 [В]: «Фарма»: поставки, остатки;\n«Оборудование»: состояние, простои
+d8 --> p62 : 56: учётные данные:\nфинучёт, персонал, запасы (CDC)
+d10 -[#1e8449,bold]-> p62 : 57 [Г]: data products\nдоменов
+p62 -[#1e8449,bold]-> d10 : 58 [Г]: «KPI группы»
+d10 --> p71 : 59: схемы, lineage,\nметки полей
+p71 --> d11 : 60: описание, владелец,\nконтракт, классификация ПДн
+d8 --> p73 : 61: сотрудники, должности,\nподразделения
+p73 --> d12 : 62: роли и уровни доступа
+analyst -[#1e8449,bold]-> p72 : 63 [Г]: запрос отчёта, срезы,\nсобственный отчёт
+d12 --> p72 : 64: роль и уровень\nдоступа пользователя
+d11 --> p72 : 65: политики доступа\nк data products
+d10 -[#1e8449,bold]-> p72 : 66 [Г]: данные разрешённых\ndata products
+p72 -[#1e8449,bold]-> analyst : 67 [Г]: отчёт в пределах\nуровня доступа
+
+legend bottom right
+  <b>Обозначения</b>
+  Серый прямоугольник — внешняя сущность
+  Эллипс — процесс (номер = домен.процесс; 7 — платформа данных)
+  Цилиндр — хранилище данных; красный — медданные, оранжевый — банковская тайна,
+  зелёный — опубликованные data products
+  <color:#1e8449><b>━━</b></color> [Г] Отчётность и портал самообслуживания
+  <color:#7d3c98><b>━━</b></color> [В] Данные подключённых партнёров в отчётности
+  <color:#7b7d7d><b>━━</b></color> Прочие аналитические потоки
+  Нумерация потоков продолжает операционную DFD (1–47)
+endlegend
+
+@enduml
